@@ -1,9 +1,9 @@
 # CampusKernel Development Roadmap
 
 ## Phase 1: Infrastructure & Core Identity
-- [x] Initialize project monorepo structure (`backend/`, `frontend/`, `docker/`)
+- [x] Initialize project monorepo structure (`backend/`, `frontend/`)
 - [x] Initialize Go Fiber backend and install dependencies
-- [x] Setup `docker-compose.yml` for PostgreSQL and Redis
+- [x] Setup local PostgreSQL and Redis environment
 - [x] Implement Database connection logic and basic models
 - [x] Implement JWT-based Identity API (Login/Register)
 
@@ -20,7 +20,7 @@
 - [ ] Implement background sync logic
 
 ## Phase 4: Code Sandbox & Broadcast Engine
-- [/] Integrate Docker SDK for Go (Code written, environment pending)
+- [/] Implement Native Execution Engine (C, Go, Rust)
 - [x] Build code execution pipeline (Backend logic implemented)
 - [ ] Setup MinIO or Local File Server for LAN broadcast
 - [x] Implement high-speed file delivery API (Implemented in backend)

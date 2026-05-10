@@ -4,14 +4,11 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io"
+	"io/ioutil"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"time"
-
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/client"
-	"github.com/docker/docker/pkg/stdcopy"
 )
 
 type ExecutionResult struct {
@@ -22,93 +19,106 @@ type ExecutionResult struct {
 }
 
 func ExecuteCode(ctx context.Context, code string, language string) (*ExecutionResult, error) {
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	// Create temporary directory for execution
+	tmpDir, err := ioutil.TempDir("", "sandbox-*")
 	if err != nil {
-		return nil, fmt.Errorf("failed to create docker client: %v", err)
+		return nil, fmt.Errorf("failed to create temp dir: %v", err)
 	}
-	defer cli.Close()
+	defer os.RemoveAll(tmpDir)
 
-	var image string
-	var cmd []string
+	var cmd *exec.Cmd
+	var fileName string
+	var outputBuffer bytes.Buffer
+
+	startTime := time.Now()
 
 	switch language {
 	case "c":
-		image = "gcc:latest"
-		cmd = []string{"sh", "-c", fmt.Sprintf("echo '%s' > main.c && gcc main.c -o main && ./main", code)}
+		fileName = filepath.Join(tmpDir, "main.c")
+		binaryName := filepath.Join(tmpDir, "main.exe")
+		if err := ioutil.WriteFile(fileName, []byte(code), 0644); err != nil {
+			return nil, err
+		}
+		
+		// Compile
+		compileCmd := exec.CommandContext(ctx, "gcc", fileName, "-o", binaryName)
+		if out, err := compileCmd.CombinedOutput(); err != nil {
+			return &ExecutionResult{
+				Output: string(out),
+				Status: "failed",
+				TimeMS: int(time.Since(startTime).Milliseconds()),
+			}, nil
+		}
+		cmd = exec.CommandContext(ctx, binaryName)
+
 	case "go":
-		image = "golang:latest"
-		cmd = []string{"sh", "-c", fmt.Sprintf("echo '%s' > main.go && go run main.go", code)}
+		fileName = filepath.Join(tmpDir, "main.go")
+		if err := ioutil.WriteFile(fileName, []byte(code), 0644); err != nil {
+			return nil, err
+		}
+		cmd = exec.CommandContext(ctx, "go", "run", fileName)
+
 	case "rust":
-		image = "rust:latest"
-		cmd = []string{"sh", "-c", fmt.Sprintf("echo '%s' > main.rs && rustc main.rs -o main && ./main", code)}
+		fileName = filepath.Join(tmpDir, "main.rs")
+		binaryName := filepath.Join(tmpDir, "main.exe")
+		if err := ioutil.WriteFile(fileName, []byte(code), 0644); err != nil {
+			return nil, err
+		}
+		
+		// Compile
+		compileCmd := exec.CommandContext(ctx, "rustc", fileName, "-o", binaryName)
+		if out, err := compileCmd.CombinedOutput(); err != nil {
+			return &ExecutionResult{
+				Output: string(out),
+				Status: "failed",
+				TimeMS: int(time.Since(startTime).Milliseconds()),
+			}, nil
+		}
+		cmd = exec.CommandContext(ctx, binaryName)
+
 	default:
 		return nil, fmt.Errorf("unsupported language: %s", language)
 	}
 
-	// Create container
-	resp, err := cli.ContainerCreate(ctx, &container.Config{
-		Image: image,
-		Cmd:   cmd,
-		Tty:   false,
-	}, &container.HostConfig{
-		Resources: container.Resources{
-			Memory: 128 * 1024 * 1024, // 128MB limit
-		},
-	}, nil, nil, "")
-	if err != nil {
-		return nil, fmt.Errorf("failed to create container: %v", err)
-	}
+	cmd.Stdout = &outputBuffer
+	cmd.Stderr = &outputBuffer
 
-	defer func() {
-		// Clean up container
-		cli.ContainerRemove(ctx, resp.ID, types.ContainerRemoveOptions{Force: true})
+	// Set a timeout
+	done := make(chan error, 1)
+	go func() {
+		done <- cmd.Run()
 	}()
 
-	startTime := time.Now()
-
-	// Start container
-	if err := cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
-		return nil, fmt.Errorf("failed to start container: %v", err)
-	}
-
-	// Wait for container to exit or timeout
-	statusCh, errCh := cli.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
-	
 	select {
-	case err := <-errCh:
-		if err != nil {
-			return nil, fmt.Errorf("error waiting for container: %v", err)
+	case <-ctx.Done():
+		if cmd.Process != nil {
+			cmd.Process.Kill()
 		}
-	case <-statusCh:
-		// Container finished
+		return nil, ctx.Err()
 	case <-time.After(10 * time.Second):
+		if cmd.Process != nil {
+			cmd.Process.Kill()
+		}
 		return &ExecutionResult{
 			Output: "Execution timed out (10s limit)",
 			Status: "timeout",
 			TimeMS: int(time.Since(startTime).Milliseconds()),
 		}, nil
+	case err := <-done:
+		executionTime := int(time.Since(startTime).Milliseconds())
+		if err != nil {
+			return &ExecutionResult{
+				Output:   outputBuffer.String(),
+				Status:   "failed",
+				TimeMS:   executionTime,
+				ExitCode: cmd.ProcessState.ExitCode(),
+			}, nil
+		}
+
+		return &ExecutionResult{
+			Output: outputBuffer.String(),
+			Status: "completed",
+			TimeMS: executionTime,
+		}, nil
 	}
-
-	executionTime := int(time.Since(startTime).Milliseconds())
-
-	// Get logs
-	out, err := cli.ContainerLogs(ctx, resp.ID, types.ContainerLogsOptions{ShowStdout: true, ShowStderr: true})
-	if err != nil {
-		return nil, fmt.Errorf("failed to get container logs: %v", err)
-	}
-	defer out.Close()
-
-	var stdout, stderr bytes.Buffer
-	_, err = stdcopy.StdCopy(&stdout, &stderr, out)
-	if err != nil {
-		return nil, fmt.Errorf("failed to copy logs: %v", err)
-	}
-
-	output := stdout.String() + stderr.String()
-
-	return &ExecutionResult{
-		Output: output,
-		TimeMS: executionTime,
-		Status: "completed",
-	}, nil
 }

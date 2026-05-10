@@ -1,0 +1,20 @@
+CampusKernel: Next Development Phases
+
+Phase 2 (Remaining): Real-time Updates
+- Integrate Redis Pub/Sub to notify students immediately when grades are uploaded.
+- Implement real-time status updates for code submissions in the dashboard.
+
+Phase 3 (Remaining): Advanced Sync
+- Implement IndexedDB for local data persistence during network drops.
+- Build the Background Sync logic to automatically retry failed API calls when WiFi restores.
+- Optimize asset caching strategies for low-bandwidth scenarios.
+
+Phase 4 (Remaining): Enterprise Broadcast
+- Finalize the Local File Server to handle high-concurrency downloads (lectures/videos).
+- Implement a "Broadcast Notification" system for teachers to push announcements over LAN.
+
+Phase 5 (Remaining): Teacher Portal & Polish
+- Build the Teacher Dashboard with analytics (class average, failure rate, submission stats).
+- Implement CSV export for academic records.
+- Comprehensive load testing for 100+ concurrent students.
+- Final UI polish, micro-animations, and Dark Mode optimization.

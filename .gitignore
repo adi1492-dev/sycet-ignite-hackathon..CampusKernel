@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+backend/vendor/
+
+# Build outputs
+frontend/.next/
+frontend/out/
+backend/main
+backend/backend
+
+# Environment files
+.env
+backend/.env
+frontend/.env.local
+
+# IDEs
+.vscode/
+.idea/
+
+# Docker
+postgres_data/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Uploads
+uploads/*
+!uploads/.gitkeep

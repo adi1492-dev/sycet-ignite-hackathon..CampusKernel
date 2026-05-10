@@ -95,6 +95,10 @@ func UploadMarks(c *fiber.Ctx) error {
 		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to insert mark"})
 		}
+
+		// Notify student via Redis Pub/Sub
+		channel := fmt.Sprintf("notifications:%s", studentID)
+		database.RedisClient.Publish(database.Ctx, channel, fmt.Sprintf("New marks uploaded for %s", subject))
 	}
 
 	return c.JSON(fiber.Map{"message": "Marks uploaded successfully"})

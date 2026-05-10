@@ -9,10 +9,12 @@ import (
 	"campuskernal/backend/internal/files"
 	"campuskernal/backend/internal/marks"
 	"campuskernal/backend/internal/middleware"
+	"campuskernal/backend/internal/notifications"
 	"campuskernal/backend/internal/sandbox"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
+	"github.com/gofiber/websocket/v2"
 	"github.com/joho/godotenv"
 )
 
@@ -25,6 +27,7 @@ func main() {
 	// Connect to Database
 	database.Connect()
 	database.InitSchema()
+	database.ConnectRedis()
 
 	// Create Fiber app
 	app := fiber.New(fiber.Config{
@@ -55,6 +58,9 @@ func main() {
 	fileGroup.Get("/", files.GetFiles)
 	fileGroup.Get("/download/:id", files.DownloadFile)
 	fileGroup.Post("/upload", middleware.Protected(), middleware.TeacherOnly(), files.UploadFile)
+
+	// Notification routes (WebSocket)
+	app.Get("/ws/notifications", middleware.Protected(), websocket.New(notifications.SocketHandler))
 
 	// Serve static uploads
 	app.Static("/uploads", "./uploads")

@@ -8,7 +8,7 @@
 - [x] Implement JWT-based Identity API (Login/Register)
 
 ## Phase 2: Academic Ledger & Grade Tracking
-- [/] Create Academic models (Grade, Assignment, Attendance)
+- [x] Create Academic models (Grade, Assignment, Attendance)
 - [x] Build API endpoints for Teachers to manage grades
 - [x] Build API endpoints for Students to view marks
 - [x] Integrate Redis Pub/Sub for real-time updates
@@ -16,11 +16,11 @@
 ## Phase 3: Kernel Sync & Offline Support
 - [x] Setup Next.js Frontend with PWA support (Bootstrap + next-pwa)
 - [/] Implement Service Worker for asset caching (Automatic via next-pwa)
-- [ ] Build offline request queue in IndexedDB
-- [ ] Implement background sync logic
+- [/] Build offline request queue in IndexedDB
+- [/] Implement background sync logic
 
 ## Phase 4: Code Sandbox & Broadcast Engine
-- [/] Implement Native Execution Engine (C, Go, Rust)
+- [x] Implement Native Execution Engine (C, Go, Rust)
 - [x] Build code execution pipeline (Backend logic implemented)
 - [ ] Setup MinIO or Local File Server for LAN broadcast
 - [x] Implement high-speed file delivery API (Implemented in backend)

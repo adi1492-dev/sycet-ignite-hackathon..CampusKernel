@@ -17,6 +17,8 @@ export const metadata: Metadata = {
   description: "Offline-first platform for campus learning and automation.",
 };
 
+import { SyncInitializer } from "@/components/sync-initializer";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -27,7 +29,10 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <SyncInitializer />
+        {children}
+      </body>
     </html>
   );
 }

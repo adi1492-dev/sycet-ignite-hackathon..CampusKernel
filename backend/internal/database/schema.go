@@ -45,6 +45,22 @@ func InitSchema() {
 		uploaded_by UUID REFERENCES users(id),
 		uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 	);
+
+	CREATE TABLE IF NOT EXISTS assignments (
+		id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+		title VARCHAR(255) NOT NULL,
+		description TEXT,
+		due_date TIMESTAMP,
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+	);
+
+	CREATE TABLE IF NOT EXISTS attendance (
+		id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+		student_id UUID REFERENCES users(id),
+		date DATE DEFAULT CURRENT_DATE,
+		status VARCHAR(20) NOT NULL DEFAULT 'present', -- present, absent, late
+		UNIQUE(student_id, date)
+	);
 	`
 	_, err := DB.Exec(query)
 	if err != nil {
